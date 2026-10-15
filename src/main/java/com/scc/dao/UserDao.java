@@ -30,30 +30,48 @@ public class UserDao {
         }
     }
 
+    public User getUserByEmail(String email) {
+        String sql = "SELECT user_id, full_name, email, password_hash, role, department FROM Users WHERE email = ?";
+        try (Connection conn = DatabaseConnection.connect();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, email);
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return new User(
+                            rs.getInt("user_id"),
+                            rs.getString("full_name"),
+                            rs.getString("email"),
+                            rs.getString("password_hash"),
+                            rs.getString("role"),
+                            rs.getString("department")
+                    );
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
     public List<User> getAllUsers() {
         List<User> users = new ArrayList<>();
         String sql = "SELECT user_id, full_name, email, password_hash, role, department FROM Users";
-
         try (Connection conn = DatabaseConnection.connect();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-
             while (rs.next()) {
-                User user = new User(
+                users.add(new User(
                         rs.getInt("user_id"),
                         rs.getString("full_name"),
                         rs.getString("email"),
                         rs.getString("password_hash"),
                         rs.getString("role"),
                         rs.getString("department")
-                );
-                users.add(user);
+                ));
             }
-
         } catch (SQLException e) {
-            System.out.println("Error retrieving users: " + e.getMessage());
+            e.printStackTrace();
         }
-
         return users;
     }
 }

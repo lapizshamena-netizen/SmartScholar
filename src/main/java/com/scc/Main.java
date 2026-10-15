@@ -1,72 +1,89 @@
 package com.scc;
 
 import com.scc.dao.DatabaseConnection;
+import com.scc.dao.ScholarshipDao;
 import com.scc.dao.UserDao;
 import com.scc.model.User;
+import com.scc.ui.AdminMenu;
 
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.Scanner;
 
 public class Main {
-    private static final Scanner sc = new Scanner(System.in);
+    private static final Scanner scanner = new Scanner(System.in);
     private static final UserDao userDao = new UserDao();
+    private static final ScholarshipDao scholarshipDao = new ScholarshipDao();
 
     public static void main(String[] args) {
-        // Initialize tables on startup
-        DatabaseConnection.createTables();
+        // Initialize SQLite database tables automatically on startup
+        initializeDatabase();
 
-        boolean running = true;
-        while (running) {
-            System.out.println("\n=================================");
-            System.out.println("      SMARTSCHOLAR SYSTEM        ");
-            System.out.println("=================================");
-            System.out.println("1. Login");
-            System.out.println("2. Register");
-            System.out.println("3. Exit");
-            System.out.print("Choose an option: ");
+        System.out.println("==========================================");
+        System.out.println("       Welcome to SmartScholar CLI        ");
+        System.out.println("==========================================");
 
-            String choice = sc.nextLine();
+        handleLogin();
 
-            switch (choice) {
-                case "1":
-                    System.out.println("\n[Login feature coming soon!]");
-                    break;
-                case "2":
-                    registerUser();
-                    break;
-                case "3":
-                    running = false;
-                    System.out.println("Exiting SmartScholar. Goodbye!");
-                    break;
-                default:
-                    System.out.println("Invalid option. Please try again.");
+        scanner.close();
+    }
+
+    private static void handleLogin() {
+        System.out.print("Enter your email to login: ");
+        String email = scanner.nextLine().trim();
+
+        User user = userDao.getUserByEmail(email);
+
+        if (user != null) {
+            System.out.println("\nLogin successful! Welcome back, " + user.fullName() + " (" + user.role() + ")");
+
+            // Route based on role
+            if ("ADMIN".equalsIgnoreCase(user.role())) {
+                AdminMenu adminMenu = new AdminMenu(userDao, scholarshipDao, scanner);
+                adminMenu.display(user);
+            } else {
+                System.out.println("Student dashboard coming soon!");
             }
+        } else {
+            System.out.println("\nUser not found with email: " + email);
+            System.out.println("Tip: Make sure you have inserted a user into your 'Users' table in SQLite.");
         }
     }
 
-    private static void registerUser() {
-        System.out.println("\n--- User Registration ---");
-        System.out.print("Enter full name: ");
-        String fullName = sc.nextLine();
+    private static void initializeDatabase() {
+        String usersTable = """
+            CREATE TABLE IF NOT EXISTS Users (
+                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                full_name TEXT NOT NULL,
+                email TEXT UNIQUE NOT NULL,
+                password_hash TEXT NOT NULL,
+                role TEXT NOT NULL,
+                department TEXT
+            );
+        """;
 
-        System.out.print("Enter email: ");
-        String email = sc.nextLine();
+        String scholarshipsTable = """
+            CREATE TABLE IF NOT EXISTS scholarships (
+                scholarship_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                description TEXT,
+                grant_amount REAL NOT NULL,
+                min_gpa REAL NOT NULL,
+                available_slots INTEGER NOT NULL,
+                deadline TEXT NOT NULL,
+                created_by INTEGER,
+                FOREIGN KEY (created_by) REFERENCES Users(user_id)
+            );
+        """;
 
-        System.out.print("Enter password: ");
-        String password = sc.nextLine(); // In production, hash this password!
-
-        System.out.print("Enter role (Student / Evaluator / Admin): ");
-        String role = sc.nextLine();
-
-        System.out.print("Enter department: ");
-        String department = sc.nextLine();
-
-        User newUser = new User(fullName, email, password, role, department);
-        boolean success = userDao.insertUser(newUser);
-
-        if (success) {
-            System.out.println("Registration successful!");
-        } else {
-            System.out.println("Registration failed.");
+        try (Connection conn = DatabaseConnection.connect();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute(usersTable);
+            stmt.execute(scholarshipsTable);
+            System.out.println("[Database] SQLite tables initialized successfully.");
+        } catch (Exception e) {
+            System.err.println("[Database] Error initializing tables: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }

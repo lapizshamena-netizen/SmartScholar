@@ -12,7 +12,6 @@ public class DatabaseConnection {
         Connection conn = null;
         try {
             conn = DriverManager.getConnection(URL);
-            System.out.println("Connection to SQLite has been established.");
         } catch (SQLException e) {
             System.out.println("Connection failed: " + e.getMessage());
         }
@@ -60,7 +59,6 @@ public class DatabaseConnection {
                 stmt.execute(sqlUsers);
                 stmt.execute(sqlScholarships);
                 stmt.execute(sqlApplication);
-                System.out.println("Database tables have been verified/created successfully.");
             }
         } catch (SQLException e) {
             System.out.println("Error creating tables: " + e.getMessage());
