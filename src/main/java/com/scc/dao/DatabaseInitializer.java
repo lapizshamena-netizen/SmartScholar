@@ -29,10 +29,13 @@ public final class DatabaseInitializer {
                 Connection connection = DatabaseConnection.connect();
                 Statement statement = connection.createStatement()
         ) {
+
+            // Create Users table.
             statement.execute(createUsers);
 
-            // Fix an existing database that has UNIQUE(full_name).
+            // Fix an existing database with UNIQUE(full_name).
             if (hasUniqueFullName(connection)) {
+
                 System.out.println(
                         "[Database] Fixing Users.full_name constraint..."
                 );
@@ -42,8 +45,10 @@ public final class DatabaseInitializer {
                 System.out.println(
                         "[Database] Users table migrated successfully."
                 );
+
             } else if (!hasColumn(connection, "Users", "status")) {
-                // Add status to older databases without deleting records.
+
+                // Add status to older databases.
                 statement.execute("""
                     ALTER TABLE Users
                     ADD COLUMN status TEXT NOT NULL DEFAULT 'PENDING'
@@ -54,7 +59,10 @@ public final class DatabaseInitializer {
                 );
             }
 
-            // Create Scholarships table.
+            // ==========================================
+            // SCHOLARSHIPS TABLE
+            // ==========================================
+
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS Scholarships (
                     scholarship_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,7 +78,10 @@ public final class DatabaseInitializer {
                 )
                 """);
 
-            // Create Application table.
+            // ==========================================
+            // APPLICATION TABLE
+            // ==========================================
+
             statement.execute("""
                 CREATE TABLE IF NOT EXISTS Application (
                     application_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -89,11 +100,29 @@ public final class DatabaseInitializer {
                 )
                 """);
 
+            // ==========================================
+            // AUDIT LOGS TABLE
+            // ==========================================
+
+            statement.execute("""
+                CREATE TABLE IF NOT EXISTS AuditLogs (
+                    log_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    admin_id INTEGER,
+                    action TEXT NOT NULL,
+                    details TEXT,
+                    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+
             System.out.println(
                     "[Database] All tables initialized successfully."
             );
         }
     }
+
+    // ==========================================
+    // CHECK IF COLUMN EXISTS
+    // ==========================================
 
     private static boolean hasColumn(
             Connection connection,
@@ -117,6 +146,10 @@ public final class DatabaseInitializer {
         return false;
     }
 
+    // ==========================================
+    // CHECK UNIQUE FULL NAME CONSTRAINT
+    // ==========================================
+
     private static boolean hasUniqueFullName(
             Connection connection
     ) throws SQLException {
@@ -127,23 +160,25 @@ public final class DatabaseInitializer {
                         "PRAGMA index_list('Users')"
                 )
         ) {
+
             while (indexes.next()) {
+
                 if (indexes.getInt("unique") != 1) {
                     continue;
                 }
 
                 String indexName = indexes.getString("name");
-
-                // Index names come from SQLite metadata.
                 String escapedName = indexName.replace("'", "''");
 
                 try (
                         Statement indexStatement =
                                 connection.createStatement();
+
                         ResultSet columns = indexStatement.executeQuery(
                                 "PRAGMA index_info('" + escapedName + "')"
                         )
                 ) {
+
                     int columnCount = 0;
                     boolean containsFullName = false;
 
@@ -156,7 +191,6 @@ public final class DatabaseInitializer {
                         }
                     }
 
-                    // Only migrate a unique index on full_name alone.
                     if (columnCount == 1 && containsFullName) {
                         return true;
                     }
@@ -167,11 +201,15 @@ public final class DatabaseInitializer {
         return false;
     }
 
+    // ==========================================
+    // MIGRATE OLD USERS TABLE
+    // ==========================================
+
     private static void migrateUsersTable(
             Connection connection
     ) throws SQLException {
 
-        // Foreign-key enforcement must be disabled before the transaction.
+        // Disable foreign keys before starting transaction.
         try (Statement statement = connection.createStatement()) {
             statement.execute("PRAGMA foreign_keys = OFF");
         }
@@ -179,6 +217,7 @@ public final class DatabaseInitializer {
         boolean committed = false;
 
         try {
+
             connection.setAutoCommit(false);
 
             boolean hasStatus =
@@ -236,19 +275,23 @@ public final class DatabaseInitializer {
             committed = true;
 
         } catch (SQLException e) {
+
             connection.rollback();
             throw e;
 
         } finally {
+
             try {
                 connection.setAutoCommit(true);
 
                 try (Statement statement =
                              connection.createStatement()) {
+
                     statement.execute("PRAGMA foreign_keys = ON");
                 }
 
             } catch (SQLException restoreError) {
+
                 if (committed) {
                     throw restoreError;
                 }
