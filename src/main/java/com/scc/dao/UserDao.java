@@ -13,14 +13,16 @@ import java.util.List;
 
 public class UserDao {
 
-    // ==========================================
-    // INSERT NEW USER
-    // ==========================================
+    // ======================================
+    // INSERT USER
+    // ======================================
 
     public boolean insertUser(User user) {
+
         String sql = """
             INSERT INTO Users
-                (full_name, email, password_hash, role, department, status)
+                (full_name, email, password_hash,
+                 role, department, status)
             VALUES (?, ?, ?, ?, ?, ?)
             """;
 
@@ -28,6 +30,7 @@ public class UserDao {
                 Connection conn = DatabaseConnection.connect();
                 PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
+
             pstmt.setString(1, user.fullName());
             pstmt.setString(2, user.email());
             pstmt.setString(3, user.passwordHash());
@@ -43,22 +46,24 @@ public class UserDao {
 
             pstmt.executeUpdate();
 
-            System.out.println("User inserted successfully!");
             return true;
 
         } catch (SQLException e) {
+
             System.err.println(
                     "Could not register user: " + e.getMessage()
             );
+
             return false;
         }
     }
 
-    // ==========================================
+    // ======================================
     // GET USER BY EMAIL
-    // ==========================================
+    // ======================================
 
     public User getUserByEmail(String email) {
+
         String sql = """
             SELECT user_id, full_name, email, password_hash,
                    role, department, status
@@ -70,15 +75,18 @@ public class UserDao {
                 Connection conn = DatabaseConnection.connect();
                 PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
+
             pstmt.setString(1, email);
 
             try (ResultSet rs = pstmt.executeQuery()) {
+
                 if (rs.next()) {
                     return mapUser(rs);
                 }
             }
 
         } catch (SQLException e) {
+
             System.err.println(
                     "Error retrieving user: " + e.getMessage()
             );
@@ -87,11 +95,12 @@ public class UserDao {
         return null;
     }
 
-    // ==========================================
+    // ======================================
     // GET USER BY ID
-    // ==========================================
+    // ======================================
 
     public User getUserById(int userId) {
+
         String sql = """
             SELECT user_id, full_name, email, password_hash,
                    role, department, status
@@ -103,28 +112,32 @@ public class UserDao {
                 Connection conn = DatabaseConnection.connect();
                 PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
+
             pstmt.setInt(1, userId);
 
             try (ResultSet rs = pstmt.executeQuery()) {
+
                 if (rs.next()) {
                     return mapUser(rs);
                 }
             }
 
         } catch (SQLException e) {
+
             System.err.println(
-                    "Error finding user: " + e.getMessage()
+                    "Error retrieving user: " + e.getMessage()
             );
         }
 
         return null;
     }
 
-    // ==========================================
+    // ======================================
     // GET ALL USERS
-    // ==========================================
+    // ======================================
 
     public List<User> getAllUsers() {
+
         List<User> users = new ArrayList<>();
 
         String sql = """
@@ -139,11 +152,13 @@ public class UserDao {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(sql)
         ) {
+
             while (rs.next()) {
                 users.add(mapUser(rs));
             }
 
         } catch (SQLException e) {
+
             System.err.println(
                     "Error retrieving users: " + e.getMessage()
             );
@@ -152,11 +167,12 @@ public class UserDao {
         return users;
     }
 
-    // ==========================================
+    // ======================================
     // GET PENDING USERS
-    // ==========================================
+    // ======================================
 
     public List<User> getPendingUsers() {
+
         List<User> users = new ArrayList<>();
 
         String sql = """
@@ -172,57 +188,72 @@ public class UserDao {
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(sql)
         ) {
+
             while (rs.next()) {
                 users.add(mapUser(rs));
             }
 
         } catch (SQLException e) {
+
             System.err.println(
-                    "Error retrieving pending users: " + e.getMessage()
+                    "Error retrieving pending users: "
+                            + e.getMessage()
             );
         }
 
         return users;
     }
 
-    // ==========================================
-    // UPDATE USER STATUS
-    // ==========================================
+    // ======================================
+    // APPROVE / UPDATE USER STATUS
+    // ======================================
 
-    public boolean updateUserStatus(String email, String status) {
+    public boolean updateUserStatus(
+            String email,
+            String status
+    ) {
+
         if (!"PENDING".equalsIgnoreCase(status)
                 && !"APPROVED".equalsIgnoreCase(status)) {
             return false;
         }
 
-        String sql = "UPDATE Users SET status = ? WHERE email = ?";
+        String sql = """
+            UPDATE Users
+            SET status = ?
+            WHERE email = ?
+            """;
 
         try (
                 Connection conn = DatabaseConnection.connect();
                 PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
+
             pstmt.setString(1, status.toUpperCase());
             pstmt.setString(2, email);
 
             return pstmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
+
             System.err.println(
                     "Error updating user status: " + e.getMessage()
             );
+
             return false;
         }
     }
 
-    // ==========================================
+    // ======================================
     // UPDATE USER ROLE AND STATUS
-    // ==========================================
+    // ======================================
 
     public boolean updateUserRoleAndStatus(
             int userId,
             String role,
             String status
     ) {
+
         if (!"STUDENT".equalsIgnoreCase(role)
                 && !"ADMIN".equalsIgnoreCase(role)) {
             return false;
@@ -243,6 +274,7 @@ public class UserDao {
                 Connection conn = DatabaseConnection.connect();
                 PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
+
             pstmt.setString(1, role.toUpperCase());
             pstmt.setString(2, status.toUpperCase());
             pstmt.setInt(3, userId);
@@ -250,127 +282,51 @@ public class UserDao {
             return pstmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
+
             System.err.println(
                     "Error updating user: " + e.getMessage()
             );
+
             return false;
         }
     }
 
-    // ==========================================
-    // DELETE USER ACCOUNT
-    // ==========================================
+    // ======================================
+    // DELETE USER
+    // ======================================
 
     public boolean deleteUserById(int userId) {
-        String sql = "DELETE FROM Users WHERE user_id = ?";
+
+        String sql = """
+            DELETE FROM Users
+            WHERE user_id = ?
+            """;
 
         try (
                 Connection conn = DatabaseConnection.connect();
                 PreparedStatement pstmt = conn.prepareStatement(sql)
         ) {
+
             pstmt.setInt(1, userId);
 
             return pstmt.executeUpdate() > 0;
 
         } catch (SQLException e) {
+
             System.err.println(
                     "Error deleting user: " + e.getMessage()
             );
+
             return false;
         }
     }
 
-    // ==========================================
-    // ADD SYSTEM AUDIT LOG
-    // ==========================================
-
-    public boolean addAuditLog(
-            int adminId,
-            String action,
-            String details
-    ) {
-        String sql = """
-            INSERT INTO AuditLogs (admin_id, action, details)
-            VALUES (?, ?, ?)
-            """;
-
-        try (
-                Connection conn = DatabaseConnection.connect();
-                PreparedStatement pstmt = conn.prepareStatement(sql)
-        ) {
-            pstmt.setInt(1, adminId);
-            pstmt.setString(2, action);
-            pstmt.setString(3, details);
-
-            pstmt.executeUpdate();
-            return true;
-
-        } catch (SQLException e) {
-            System.err.println(
-                    "Error saving audit log: " + e.getMessage()
-            );
-            return false;
-        }
-    }
-
-    // ==========================================
-    // GET SYSTEM AUDIT LOGS
-    // ==========================================
-
-    public List<String> getAuditLogs() {
-        List<String> logs = new ArrayList<>();
-
-        String sql = """
-            SELECT
-                AuditLogs.log_id,
-                AuditLogs.admin_id,
-                Users.full_name,
-                AuditLogs.action,
-                AuditLogs.details,
-                AuditLogs.created_at
-            FROM AuditLogs
-            LEFT JOIN Users
-                ON AuditLogs.admin_id = Users.user_id
-            ORDER BY AuditLogs.log_id DESC
-            """;
-
-        try (
-                Connection conn = DatabaseConnection.connect();
-                Statement stmt = conn.createStatement();
-                ResultSet rs = stmt.executeQuery(sql)
-        ) {
-            while (rs.next()) {
-
-                String adminName = rs.getString("full_name");
-
-                if (adminName == null) {
-                    adminName = "Deleted Admin";
-                }
-
-                logs.add(String.format(
-                        "[%d] Admin: %s | Action: %s | Details: %s | Date: %s",
-                        rs.getInt("log_id"),
-                        adminName,
-                        rs.getString("action"),
-                        rs.getString("details"),
-                        rs.getString("created_at")
-                ));
-            }
-
-        } catch (SQLException e) {
-            System.err.println(
-                    "Error retrieving audit logs: " + e.getMessage()
-            );
-        }
-
-        return logs;
-    }
-
-    // ==========================================
-    // MAP DATABASE RESULT TO USER OBJECT
-    // ==========================================
+    // ======================================
+    // MAP RESULT TO USER
+    // ======================================
 
     private User mapUser(ResultSet rs) throws SQLException {
+
         String status = rs.getString("status");
 
         if (status == null || status.isBlank()) {
